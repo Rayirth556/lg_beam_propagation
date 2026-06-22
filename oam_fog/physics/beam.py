@@ -4,6 +4,12 @@ from math import sqrt, pi
 from typing import List, Tuple
 
 
+
+"""
+
+- This function generates the Laguerre-Gaussian beam.
+
+"""
 def generate_lg(l: int, p: int, w0: float, R: np.ndarray, PHI: np.ndarray, dx: float) -> np.ndarray:
     """Normalized LG_p^l field. integral |E|^2 dx dy = 1."""
     al = abs(l)
