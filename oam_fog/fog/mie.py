@@ -45,12 +45,12 @@ class MieModel:
     def summary(self, fog_config):
         nd_values = np.linspace(fog_config.nd_min, fog_config.nd_max, 5)
         print(f"\n{'='*65}")
-        print(f"Mie scattering summary  (r_eff={self.r_eff*1e6:.1f} µm, "
-              f"λ={self.wavelength*1e9:.0f} nm, x={self.x:.3f})")
+        print(f"Mie scattering summary  (r_eff={self.r_eff*1e6:.1f} um, "
+              f"wl={self.wavelength*1e9:.0f} nm, x={self.x:.3f})")
         print(f"  Q_ext={self.Q_ext:.4f}  Q_sca={self.Q_sca:.4f}  g={self.g:.4f}")
-        print(f"  σ_ext={self.sigma_ext:.3e} m²   σ_sca={self.sigma_sca:.3e} m²")
+        print(f"  s_ext={self.sigma_ext:.3e} m^2   s_sca={self.sigma_sca:.3e} m^2")
         print(f"{'='*65}")
-        print(f"{'N_d [m^-3]':>14}  {'vis [m]':>8}  {'T_amp/screen':>13}  {'σ_A':>8}  {'σ_φ [rad]':>10}")
+        print(f"{'N_d [m^-3]':>14}  {'vis [m]':>8}  {'T_amp/screen':>13}  {'sA':>8}  {'s_phi [rad]':>11}")
         print(f"{'-'*65}")
         for nd in nd_values:
             p = self.fog_params(nd, fog_config.dz)

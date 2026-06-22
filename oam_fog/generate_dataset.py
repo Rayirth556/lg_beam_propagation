@@ -40,10 +40,13 @@ def main():
     # 5. Precompute ASM transfer function
     H_step = asm_transfer(fog_cfg.dz, grid)
     H_back = asm_transfer(-fog_cfg.path_m, grid)
-    # 6. Sample N_d log-uniformly
+    # 6. Sample N_d and r0 log-uniformly
     rng_master = np.random.default_rng(42)
     nd_samples = np.exp(
         rng_master.uniform(np.log(fog_cfg.nd_min), np.log(fog_cfg.nd_max), dataset.n_samples)
+    )
+    r0_samples = np.exp(
+        rng_master.uniform(np.log(fog_cfg.r0_min), np.log(fog_cfg.r0_max), dataset.n_samples)
     )
     seeds = rng_master.integers(0, 2**31, size=dataset.n_samples)
 
@@ -58,9 +61,10 @@ def main():
 
     for i in range(dataset.n_samples):
         nd = nd_samples[i]
+        r0 = r0_samples[i]
         fp = mie.fog_params(nd, fog_cfg.dz)
         rng_i = np.random.default_rng(int(seeds[i]))
-        E_out = simulate(E_in, fp, H_step, fog_cfg.n_screens, rng_i)
+        E_out = simulate(E_in, fp, H_step, fog_cfg.n_screens, r0, grid.dx, rng_i)
 
         I = np.abs(E_out)**2                                        # ← keep E_out here
         I_max = I.max()
