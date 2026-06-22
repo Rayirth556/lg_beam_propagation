@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from config import grid, beam, fog_cfg, basis, dataset
 from physics.beam import generate_lg, precompute_basis
-from physics.propagation import asm_transfer
+from physics.propagation import asm_transfer, asm_step
 from physics.decomposition import oam_spectrum, basis_capture
 from fog.mie import MieModel
 from fog.screens import simulate
