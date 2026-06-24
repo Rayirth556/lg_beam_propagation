@@ -47,6 +47,8 @@ class FogConfig:
     r_eff: float = 10e-6   ## effective droplet radius(10×10^−6 m)
     nd_min: float = 10e6   ## Minimum droplet number density.
     nd_max: float = 150e6  ## maximum droplet number density. the dataset generator samples densities between these limits(nd_max and nd_min)
+    r0_min: float = 1e-3   ## Fried coherence length min [m] — strong turbulence (r0 << w0)
+    r0_max: float = 10e-2  ## Fried coherence length max [m] — weak turbulence (r0 >> w0)
     path_m: float = 20.0   ## Propagation distance through fog.
     n_screens: int = 10    ## Number of phase screens used in split-step propagation
 
