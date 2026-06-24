@@ -61,8 +61,8 @@ An OAM mode is a light beam whose phase twists around its center
 """
 @dataclass
 class BasisConfig:
-    l_max: int = 5  ## l∈[−5,5], 11 different OAM values
-    p_modes: List[int] = field(default_factory=lambda: [0])
+    l_max: int = 8  ## l∈[−8,8], 17 different OAM values
+    p_modes: List[int] = field(default_factory=lambda: [0, 1, 2, 3])  ## radial modes — fog scatters power into p>0
 
     @property
     def modes(self) -> List[Tuple[int, int]]:        ## This generates all basis modes.
