@@ -47,7 +47,7 @@ class FogConfig:
     r_eff: float = 10e-6   ## effective droplet radius(10×10^−6 m)
     nd_min: float = 10e6   ## Minimum droplet number density.
     nd_max: float = 150e6  ## maximum droplet number density. the dataset generator samples densities between these limits(nd_max and nd_min)
-    r0_min: float = 1e-3   ## Fried coherence length min [m] — strong turbulence (r0 << w0)
+    r0_min: float = 5e-3   ## Fried coherence length min [m] — r0=5mm, strong but not pathological (r0/w0~3)
     r0_max: float = 10e-2  ## Fried coherence length max [m] — weak turbulence (r0 >> w0)
     path_m: float = 20.0   ## Propagation distance through fog.
     n_screens: int = 10    ## Number of phase screens used in split-step propagation
@@ -64,7 +64,7 @@ An OAM mode is a light beam whose phase twists around its center
 @dataclass
 class BasisConfig:
     l_max: int = 8  ## l∈[−8,8], 17 different OAM values
-    p_modes: List[int] = field(default_factory=lambda: [0, 1, 2, 3])  ## radial modes — fog scatters power into p>0
+    p_modes: List[int] = field(default_factory=lambda: [0, 1, 2, 3, 4, 5])  ## radial modes — fog scatters power into p>0
 
     @property
     def modes(self) -> List[Tuple[int, int]]:        ## This generates all basis modes.
