@@ -34,9 +34,10 @@ class GridConfig:
 
 @dataclass
 class BeamConfig:
-    w0: float = 1.5e-3     ## determines how wide the beam is at the lowest point
-    l_in: int = 1          ## This is the OAM mode number(azimuthal mode index) e^i*l*phi
-    p_in: int = 0          ## determins how many radial rings exist
+    w0: float = 1.5e-3          ## beam waist radius [m]
+    l_in: int = 1               ## single-mode input (used if l_modes is empty)
+    p_in: int = 0               ## radial index of input beam
+    l_modes: List[int] = field(default_factory=lambda: [1, 3, 5])  ## multiplexed OAM modes
 
 
 
@@ -44,13 +45,14 @@ class BeamConfig:
 ## This class defines the fog medium through which the LG beam propagates
 @dataclass
 class FogConfig:
-    r_eff: float = 10e-6   ## effective droplet radius(10×10^−6 m)
-    nd_min: float = 10e6   ## Minimum droplet number density.
-    nd_max: float = 150e6  ## maximum droplet number density. the dataset generator samples densities between these limits(nd_max and nd_min)
-    r0_min: float = 5e-3   ## Fried coherence length min [m] — r0=5mm, strong but not pathological (r0/w0~3)
-    r0_max: float = 10e-2  ## Fried coherence length max [m] — weak turbulence (r0 >> w0)
-    path_m: float = 20.0   ## Propagation distance through fog.
-    n_screens: int = 10    ## Number of phase screens used in split-step propagation
+    r_eff: float = 10e-6   ## effective droplet radius (10 µm)
+    nd_min: float = 10e6   ## minimum droplet number density [m^-3]
+    nd_max: float = 20e6   ## maximum droplet number density [m^-3]
+                           ##   validated: keeps mean capture ≥ 0.90 at 250m
+    r0_min: float = 2e-2   ## Fried coherence length min [m] = 20mm — validated at 250m
+    r0_max: float = 10e-2  ## Fried coherence length max [m] = 100mm
+    path_m: float = 250.0  ## propagation distance [m] — validated max with fog + turbulence
+    n_screens: int = 3     ## phase screens: dz = 250/3 ≈ 83m per screen
 
     @property
     def dz(self) -> float:

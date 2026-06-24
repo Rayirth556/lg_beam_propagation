@@ -9,7 +9,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(__file__))
 
 from config import grid, beam, fog_cfg, basis, dataset
-from physics.beam import generate_lg, precompute_basis
+from physics.beam import generate_lg, generate_multiplexed_lg, precompute_basis
 from physics.propagation import asm_transfer, asm_step
 from physics.decomposition import oam_spectrum, basis_capture
 from fog.mie import MieModel
@@ -34,8 +34,13 @@ def main():
     basis_fields = precompute_basis(basis.modes, beam.w0, R, PHI, grid.dx)
     print(f"  {basis.n_modes} modes: l in [{-basis.l_max}, {basis.l_max}], p in {basis.p_modes}")
 
-    # 4. Input beam
-    E_in = generate_lg(beam.l_in, beam.p_in, beam.w0, R, PHI, grid.dx)
+    # 4. Input beam — multiplexed LG modes
+    if len(beam.l_modes) > 1:
+        E_in = generate_multiplexed_lg(beam.l_modes, beam.p_in, beam.w0, R, PHI, grid.dx)
+        print(f"Input beam: multiplexed l={beam.l_modes}")
+    else:
+        E_in = generate_lg(beam.l_in, beam.p_in, beam.w0, R, PHI, grid.dx)
+        print(f"Input beam: single mode l={beam.l_in}")
 
     # 5. Precompute ASM transfer function
     H_step = asm_transfer(fog_cfg.dz, grid)
@@ -142,6 +147,16 @@ def main():
     for idx in top5_idx:
         p_mode, l_mode = basis.modes[idx]
         print(f"  (p={p_mode}, l={l_mode:+d})  {mean_spec[idx]:.4f}")
+
+    # Weighted std of OAM spectrum (l-axis only, summed over p)
+    l_values = np.array([l for p, l in basis.modes])
+    weighted_stds = []
+    for spec in spectra:
+        mean_l = np.sum(spec * l_values)
+        weighted_stds.append(np.sqrt(np.sum(spec * (l_values - mean_l)**2)))
+    print(f"\nWeighted OAM std (sigma_l):")
+    print(f"  mean = {np.mean(weighted_stds):.4f} rad")
+    print(f"  min  = {np.min(weighted_stds):.4f}  max = {np.max(weighted_stds):.4f}")
     print(f"{'='*60}")
 
 
