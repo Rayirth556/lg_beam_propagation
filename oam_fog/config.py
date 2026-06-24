@@ -1,89 +1,86 @@
-"""
-Centralised configuration for the LG-beam fog / turbulence simulation.
-All physical quantities are in SI units throughout.
-"""
-
 from dataclasses import dataclass, field
 from math import pi
-from typing import List
+from typing import List, Tuple
 
+"""
+grid = 2d spacial sampling of a physical plane
 
-# ── Grid ─────────────────────────────────────────────────────────────────────
+l = azimuthal quantum number (controls the helical/spiral phase structure of the beam)
+- l = 0(plain gaussian, no spiral)
+- l = 1(single helix)
+- l = -1(helix in opposite directions)
+p = radial index(controls how many concentric rings the beam has)
+- p = 0 → one bright ring (most common)
+- p = 1 → two concentric rings
+- p = 2 → three rings
+"""
 
 @dataclass
 class GridConfig:
-    N:          int   = 128
-    L_m:        float = 32e-3      # physical extent [m]  — must contain diverged beam
-    wavelength: float = 1550e-9    # [m]  telecom C-band
-    dx:         float = field(init=False)
-    k:          float = field(init=False)
+    N: int = 128 ## grid is 128x128 pixels
+    L_m: float = 32e-3 ## physical size of grid(field of view)
+    wavelength: float = 1550e-9 ## laser wavelength
 
-    def __post_init__(self):
-        self.dx = self.L_m / self.N          # pixel pitch [m]
-        self.k  = 2 * pi / self.wavelength   # wavenumber [rad/m]
+    @property
+    def dx(self) -> float:    ## Computes the physical size of one pixel.
+        return self.L_m / self.N
 
 
-# ── Beam ─────────────────────────────────────────────────────────────────────
+    ## k is the optical wave number
+    @property
+    def k(self) -> float:     ## k = 2*pi/wavelength
+        return 2 * pi / self.wavelength
+
 
 @dataclass
 class BeamConfig:
-    w0:   float = 1.5e-3   # beam waist [m]
-    l_in: int   = 1        # input OAM topological charge
-    p_in: int   = 0        # input radial index
+    w0: float = 1.5e-3     ## determines how wide the beam is at the lowest point
+    l_in: int = 1          ## This is the OAM mode number(azimuthal mode index) e^i*l*phi
+    p_in: int = 0          ## determins how many radial rings exist
 
 
-# ── Fog + Turbulence ──────────────────────────────────────────────────────────
 
+
+## This class defines the fog medium through which the LG beam propagates
 @dataclass
 class FogConfig:
-    # Mie / fog parameters
-    r_eff:    float = 10e-6    # droplet radius [m]
-    nd_min:   float = 10e6    # minimum droplet density [m^-3]  (~628 m visibility)
-    nd_max:   float = 150e6   # maximum droplet density [m^-3]  (~42 m visibility)
+    r_eff: float = 10e-6   ## effective droplet radius(10×10^−6 m)
+    nd_min: float = 10e6   ## Minimum droplet number density.
+    nd_max: float = 150e6  ## maximum droplet number density. the dataset generator samples densities between these limits(nd_max and nd_min)
+    path_m: float = 20.0   ## Propagation distance through fog.
+    n_screens: int = 10    ## Number of phase screens used in split-step propagation
 
-    # Propagation geometry
-    path_m:   float = 20.0    # total path length [m]
-    n_screens: int  = 10      # number of thin screens
+    @property
+    def dz(self) -> float:
+        return self.path_m / self.n_screens   ## Distance between screens (20/10 = 2m)
 
-    # Kolmogorov turbulence (Option C)
-    r0_min:   float = 3e-4    # Fried parameter minimum [m]  — strong turbulence
-    r0_max:   float = 5e-3    # Fried parameter maximum [m]  — weak turbulence
-    L0:       float = 10.0    # outer scale [m]
+"""
+- onfiguration is for the OAM decomposition basis
+An OAM mode is a light beam whose phase twists around its center
 
-    dz:       float = field(init=False)   # screen spacing [m]
-
-    def __post_init__(self):
-        self.dz = self.path_m / self.n_screens
-
-
-# ── OAM Basis ────────────────────────────────────────────────────────────────
-
+"""
 @dataclass
 class BasisConfig:
-    l_max:   int        = 5
-    p_modes: List[int]  = field(default_factory=lambda: [0])
-    modes:   list       = field(init=False)
-    n_modes: int        = field(init=False)
+    l_max: int = 5  ## l∈[−5,5], 11 different OAM values
+    p_modes: List[int] = field(default_factory=lambda: [0])
 
-    def __post_init__(self):
-        self.modes   = [(p, l)
-                        for p in self.p_modes
-                        for l in range(-self.l_max, self.l_max + 1)]
-        self.n_modes = len(self.modes)
+    @property
+    def modes(self) -> List[Tuple[int, int]]:        ## This generates all basis modes.
+        return [(p, l) for p in self.p_modes for l in range(-self.l_max, self.l_max + 1)]
 
+    @property
+    def n_modes(self) -> int:          ## ## Counts how many basis functions exist.
+        return len(self.modes)
 
-# ── Dataset ───────────────────────────────────────────────────────────────────
 
 @dataclass
 class DatasetConfig:
-    n_samples: int = 1800
-    save_dir:  str = "data/"
+    n_samples: int = 5000
+    save_dir: str = "data/"
 
 
-# ── Module-level singletons (imported everywhere) ────────────────────────────
-
-grid    = GridConfig()
-beam    = BeamConfig()
+grid = GridConfig()
+beam = BeamConfig()
 fog_cfg = FogConfig()
-basis   = BasisConfig()
+basis = BasisConfig()
 dataset = DatasetConfig()

@@ -1,72 +1,50 @@
 import torch
 import torch.nn as nn
 
+def _conv_block(in_ch, out_ch):
+    return nn.Sequential(
+        nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1, bias=False),
+        nn.BatchNorm2d(out_ch),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1, bias=False),
+        nn.BatchNorm2d(out_ch),
+        nn.ReLU(inplace=True),
+        nn.MaxPool2d(kernel_size=2, stride=2),
+    )
+
 class OAMNet(nn.Module):
-    """
-    CNN architecture for predicting OAM power spectra from intensity profiles.
-    
-    Input shape: (B, 1, 128, 128)
-    Output shape: (B, 11) - Probability distribution over OAM topological charges.
-    """
+    L1_IDX = 6
+
     def __init__(self):
-        super(OAMNet, self).__init__()
-        
-        # Block 1: 1 -> 32 -> 32 channels. MaxPool reduces spatial dims 128x128 -> 64x64.
-        self.block1 = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, 32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2)
-        )
-        
-        # Block 2: 32 -> 64 -> 64 channels. MaxPool reduces spatial dims 64x64 -> 32x32.
-        self.block2 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2)
-        )
-        
-        # Block 3: 64 -> 128 -> 128 channels. MaxPool reduces spatial dims 32x32 -> 16x16.
-        self.block3 = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2)
-        )
-        
-        # Global Average Pooling: reduces (B, 128, 16, 16) -> (B, 128, 1, 1)
+        super().__init__()
+        self.block1 = _conv_block(1, 32)
+        self.block2 = _conv_block(32, 64)
+        self.block3 = _conv_block(64, 128)
         self.gap = nn.AdaptiveAvgPool2d(1)
-        
-        # MLP Classifier head
-        self.mlp = nn.Sequential(
-            nn.Linear(128, 64),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.3),
-            nn.Linear(64, 11)
+
+        feat_dim = 128 + 1  # + visibility scalar
+
+        self.l1_head = nn.Sequential(
+            nn.Linear(feat_dim, 64), nn.ReLU(inplace=True), nn.Dropout(0.3),
+            nn.Linear(64, 1), nn.Sigmoid(),
         )
-        
-        # Softmax to produce probabilities summing to 1
-        self.softmax = nn.Softmax(dim=1)
-        
-    def forward(self, x):
+        self.shape_head = nn.Sequential(
+            nn.Linear(feat_dim, 64), nn.ReLU(inplace=True), nn.Dropout(0.3),
+            nn.Linear(64, 10),
+        )
+
+    def forward(self, x, visibility):
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
-        
-        x = self.gap(x)
-        x = torch.flatten(x, start_dim=1)  # Flatten spatial dimensions
-        
-        x = self.mlp(x)
-        x = self.softmax(x)
-        
-        return x
+        feat = self.gap(x).flatten(1)
+        feat = torch.cat([feat, visibility], dim=1)
+
+        p_l1 = self.l1_head(feat).squeeze(1)          # (B,)
+        shape = torch.softmax(self.shape_head(feat), dim=1)  # (B, 10)
+
+        other_idx = [i for i in range(11) if i != self.L1_IDX]
+        full = torch.zeros(x.shape[0], 11, device=x.device)
+        full[:, self.L1_IDX] = p_l1
+        full[:, other_idx] = (1 - p_l1).unsqueeze(1) * shape
+        return full, p_l1, shape
