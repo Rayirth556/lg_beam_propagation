@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import torch
+from scipy.stats import pearsonr
 from torch.utils.data import DataLoader, random_split
 
 ROOT    = os.path.dirname(os.path.abspath(__file__))
@@ -132,23 +133,45 @@ def main():
     fig.savefig(os.path.join(OUTPUTS, "fig2_example_predictions.png"), dpi=150)
     plt.close()
 
-    # ── Fig 3: l=+1 scatter ───────────────────────────────────────────────────
-    true_l1 = all_targets[:, l1_idx]
-    pred_l1 = all_l1_pred
-    a, b    = true_l1 - true_l1.mean(), pred_l1 - pred_l1.mean()
-    denom   = np.sqrt((a**2).sum() * (b**2).sum())
-    r       = float(np.dot(a, b) / denom) if denom > 0 else 0.0
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.scatter(true_l1, pred_l1, s=18, alpha=0.5, label=f"r = {r:.3f}")
-    lo = min(true_l1.min(), pred_l1.min()) - 0.02
-    hi = max(true_l1.max(), pred_l1.max()) + 0.02
-    ax.plot([lo, hi], [lo, hi], "r--")
-    ax.set_xlabel(f"True p(l={input_lmodes[0]})")
-    ax.set_ylabel(f"Predicted p(l={input_lmodes[0]})")
-    ax.set_title(f"Primary mode (l={input_lmodes[0]}) power prediction")
-    ax.legend(); ax.grid(True, alpha=0.3); ax.set_aspect("equal")
+    # ── Fig 3: scatter for EACH input mode ──────────────────────────────────
+    n_input = len(input_lmodes)
+    fig, axes = plt.subplots(1, n_input, figsize=(6 * n_input, 5))
+    if n_input == 1:
+        axes = [axes]
+    input_pearson_rs = []
+    for ax, l_val, idx in zip(axes, input_lmodes, input_indices):
+        t = all_targets[:, idx]
+        p = all_preds[:, idx]
+        r_val, _ = pearsonr(t, p)
+        input_pearson_rs.append(r_val)
+        ax.scatter(t, p, s=18, alpha=0.5, label=f"r = {r_val:.3f}")
+        lo = min(t.min(), p.min()) - 0.02
+        hi = max(t.max(), p.max()) + 0.02
+        ax.plot([lo, hi], [lo, hi], "r--")
+        ax.set_xlabel(f"True  p(l={l_val})"); ax.set_ylabel(f"Pred  p(l={l_val})")
+        ax.set_title(f"l={l_val} mode power  (r={r_val:.3f})")
+        ax.legend(); ax.grid(True, alpha=0.3); ax.set_aspect("equal")
+    fig.suptitle("Per-mode scatter: input modes", fontsize=13)
     fig.tight_layout()
     fig.savefig(os.path.join(OUTPUTS, "fig3_l1_scatter.png"), dpi=150)
+    plt.close()
+
+    # ── Fig 3b: total input-mode power scatter ────────────────────────────────
+    total_true = all_targets[:, input_indices].sum(axis=1)
+    total_pred = all_preds[:, input_indices].sum(axis=1)
+    r_total, _ = pearsonr(total_true, total_pred)
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.scatter(total_true, total_pred, s=18, alpha=0.5, color="teal",
+               label=f"r = {r_total:.3f}")
+    lo = min(total_true.min(), total_pred.min()) - 0.02
+    hi = max(total_true.max(), total_pred.max()) + 0.02
+    ax.plot([lo, hi], [lo, hi], "r--")
+    ax.set_xlabel("True total input-mode power")
+    ax.set_ylabel("Predicted total input-mode power")
+    ax.set_title(f"Total power in l={input_lmodes}  (r={r_total:.3f})")
+    ax.legend(); ax.grid(True, alpha=0.3); ax.set_aspect("equal")
+    fig.tight_layout()
+    fig.savefig(os.path.join(OUTPUTS, "fig3b_total_power_scatter.png"), dpi=150)
     plt.close()
 
     # ── Fig 4: per-mode MAE (input modes highlighted) ─────────────────────────
@@ -191,14 +214,34 @@ def main():
     fig.savefig(os.path.join(OUTPUTS, "fig6_wstd_scatter.png"), dpi=150)
     plt.close()
 
-    # ── Print summary ─────────────────────────────────────────────────────────
+    # ── Print summary ───────────────────────────────────────────────────────────────────────────
     print(f"\nFigures saved to outputs/")
-    print(f"\nPrimary mode (l={input_lmodes[0]}) Pearson r : {r:.4f}")
-    print(f"Weighted std  Pearson r               : {r_ws:.4f}")
-    print(f"Mean MAE (all modes)                  : {mae_per_mode.mean():.4f}")
+    print(f"\n{'='*60}")
+    print(f"Per-input-mode Pearson r:")
+    for l_val, r_val in zip(input_lmodes, input_pearson_rs):
+        print(f"  l={l_val:+d}  r = {r_val:.4f}")
+    print(f"  Total input-mode power  r = {r_total:.4f}")
+    print(f"\nWeighted std Pearson r        : {r_ws:.4f}")
+    print(f"Mean MAE (all modes)          : {mae_per_mode.mean():.4f}")
     print(f"\nWeighted OAM std  σ_l:")
     print(f"  True  — mean={wstd_true.mean():.4f}  std={wstd_true.std():.4f}")
     print(f"  Pred  — mean={wstd_pred.mean():.4f}  std={wstd_pred.std():.4f}")
+    print(f"{'='*60}")
+
+    # ── Optional: Colab download ───────────────────────────────────────────────────────
+    try:
+        from google.colab import files
+        figs = ["fig1_training_curve.png", "fig2_example_predictions.png",
+                "fig3_l1_scatter.png",     "fig3b_total_power_scatter.png",
+                "fig4_per_mode_error.png", "fig5_weighted_std.png",
+                "fig6_wstd_scatter.png"]
+        print("\nDownloading figures...")
+        for f in figs:
+            fp = os.path.join(OUTPUTS, f)
+            if os.path.exists(fp):
+                files.download(fp)
+    except ImportError:
+        pass   # not in Colab, figures already saved to outputs/
 
 
 if __name__ == "__main__":
