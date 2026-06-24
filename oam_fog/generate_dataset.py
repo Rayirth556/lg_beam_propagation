@@ -109,7 +109,8 @@ def main():
     metadata = {
         "grid": {"N": grid.N, "L_m": grid.L_m, "dx": grid.dx,
                  "wavelength": grid.wavelength, "k": grid.k},
-        "beam": {"w0": beam.w0, "l_in": beam.l_in, "p_in": beam.p_in},
+        "beam": {"w0": beam.w0, "l_in": beam.l_in, "p_in": beam.p_in,
+                  "l_modes": beam.l_modes},
         "fog": {"r_eff": fog_cfg.r_eff, "nd_min": fog_cfg.nd_min,
                 "nd_max": fog_cfg.nd_max, "path_m": fog_cfg.path_m,
                 "n_screens": fog_cfg.n_screens, "dz": fog_cfg.dz},
