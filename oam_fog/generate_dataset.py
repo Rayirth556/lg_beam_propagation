@@ -86,7 +86,17 @@ def main():
                   f"elapsed={elapsed:.1f}s  eta={eta:.1f}s  "
                   f"capture={cap:.3f}  vis={fp['vis_m']:.1f}m")
 
-    # 9. Save arrays
+    # 9. Filter out low-capture samples before saving
+    MIN_CAPTURE = 0.50
+    keep = captures >= MIN_CAPTURE
+    n_dropped = int((~keep).sum())
+    if n_dropped > 0:
+        print(f"\nFiltering: dropping {n_dropped} samples with capture < {MIN_CAPTURE}")
+        intensities  = intensities[keep]
+        spectra      = spectra[keep]
+        visibilities = visibilities[keep]
+        captures     = captures[keep]
+
     np.save(os.path.join(dataset.save_dir, "intensities.npy"), intensities)
     np.save(os.path.join(dataset.save_dir, "spectra.npy"), spectra)
     np.save(os.path.join(dataset.save_dir, "visibilities.npy"), visibilities)
@@ -100,7 +110,8 @@ def main():
                 "n_screens": fog_cfg.n_screens, "dz": fog_cfg.dz},
         "basis": {"l_max": basis.l_max, "p_modes": basis.p_modes,
                   "modes": basis.modes, "n_modes": basis.n_modes},
-        "dataset": {"n_samples": dataset.n_samples, "save_dir": dataset.save_dir},
+        "dataset": {"n_samples": len(intensities), "n_dropped": n_dropped,
+                    "min_capture_threshold": MIN_CAPTURE, "save_dir": dataset.save_dir},
     }
     with open(os.path.join(dataset.save_dir, "metadata.json"), "w") as f:
         json.dump(metadata, f, indent=2)
@@ -118,11 +129,15 @@ def main():
     print(f"  intensities: {intensities.shape}  float32")
     print(f"  spectra:     {spectra.shape}  float32")
     print(f"  visibilities:{visibilities.shape}  float32")
-    print(f"\nBasis capture:")
+    if n_dropped > 0:
+        print(f"  dropped:     {n_dropped} low-capture samples (< {MIN_CAPTURE})")
+    print(f"\nBasis capture (after filtering):")
     print(f"  mean = {mean_capture:.4f}")
-    print(f"  min  = {min_capture:.4f}  (sample {min_cap_idx}, vis={visibilities[min_cap_idx]:.1f}m)")
-    if min_capture < 0.80:
-        print("  WARNING: min capture < 0.80 — consider increasing l_max!")
+    print(f"  min  = {min_capture:.4f}")
+    if mean_capture < 0.80:
+        print("  WARNING: mean capture < 0.80 — consider increasing l_max or p_modes!")
+    else:
+        print("  OK: mean capture >= 0.80")
     print(f"\nMean OAM spectrum (top 5 modes by power):")
     for idx in top5_idx:
         p_mode, l_mode = basis.modes[idx]
