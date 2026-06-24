@@ -62,9 +62,8 @@ def main():
         rng_i = np.random.default_rng(int(seeds[i]))
         E_out = simulate(E_in, fp, H_step, fog_cfg.n_screens, rng_i)
 
-        I = np.abs(E_out)**2                                        # ← keep E_out here
-        I_max = I.max()
-        intensities[i] = (I / I_max if I_max > 0 else I).astype(np.float32)
+        I = np.abs(E_out)**2  # raw physical intensity — preserve absolute scale
+        intensities[i] = I.astype(np.float32)  # no per-sample normalization
 
         E_dec = asm_step(E_out, H_back)                            # ← ADD this line
 

@@ -73,7 +73,7 @@
     "n_modes": 11
   },
   "dataset": {
-    "n_samples": 1800,
+    "n_samples": 5000,
     "save_dir": "data/"
   }
 }

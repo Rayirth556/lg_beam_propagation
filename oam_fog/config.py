@@ -75,7 +75,7 @@ class BasisConfig:
 
 @dataclass
 class DatasetConfig:
-    n_samples: int = 1800
+    n_samples: int = 5000
     save_dir: str = "data/"
 
 
